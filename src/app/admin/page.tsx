@@ -17,6 +17,11 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalPromotions, setTotalPromotions] = useState<number>(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -31,21 +36,41 @@ export default function AdminPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Verificação simples - para maior segurança, use autenticação real
-    if (password === 'senha123') {
-      setIsAuthenticated(true);
-      setPassword('');
-      loadPromotions();
-    } else {
-      alert('Senha incorreta!');
-    }
+    // Envia a senha para validação server-side; a rota /api/auth cria um cookie httpOnly
+    (async () => {
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+
+        if (res.ok) {
+          setIsAuthenticated(true);
+          setPassword('');
+          loadPromotions(1, search);
+        } else {
+          alert('Senha incorreta!');
+        }
+      } catch (err) {
+        console.error('Erro ao autenticar:', err);
+        alert('Erro ao autenticar');
+      }
+    })();
   };
 
-  const loadPromotions = async () => {
+  const LIMIT = 10;
+
+  const loadPromotions = async (pageParam: number = 1, searchParam: string = '') => {
     try {
-      const response = await fetch('/api/promotions');
-      const data = await response.json();
-      setPromotions(data);
+      const q = searchParam ? `&q=${encodeURIComponent(searchParam)}` : '';
+      const response = await fetch(`/api/promotions?page=${pageParam}&limit=${LIMIT}${q}`, { credentials: 'same-origin', cache: 'no-store' });
+      const res = await response.json();
+      setPromotions(res.data || []);
+      setTotalPromotions(res.total || 0);
+      setTotalPages(res.totalPages || 1);
+      setPage(res.page || pageParam);
     } catch (error) {
       console.error('Erro ao carregar promoções:', error);
     }
@@ -69,35 +94,22 @@ export default function AdminPage() {
       const action = editingId ? 'update' : 'add';
       const response = await fetch('/api/promotions', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          password: 'senha123',
-          action,
-          promotion: editingId
-            ? { id: editingId, ...formData }
-            : formData,
-        }),
+        body: JSON.stringify({ action, promotion: editingId ? { id: editingId, ...formData } : formData }),
       });
 
+      const resJson = await response.json().catch(() => null);
       if (response.ok) {
-        alert(
-          editingId
-            ? 'Promoção atualizada com sucesso!'
-            : 'Promoção adicionada com sucesso!'
-        );
-        setFormData({
-          product_name: '',
-          price: '',
-          image: '',
-          link: '',
-          coupon: '',
-          description: '',
-        });
+        console.log('save response:', resJson);
+        alert(editingId ? 'Promoção atualizada com sucesso!' : 'Promoção adicionada com sucesso!');
+        setFormData({ product_name: '', price: '', image: '', link: '', coupon: '', description: '' });
         setEditingId(null);
-        loadPromotions();
+        loadPromotions(1, search);
       } else {
+        console.error('save error response:', resJson);
         alert('Erro ao salvar promoção');
       }
     } catch (error) {
@@ -129,20 +141,18 @@ export default function AdminPage() {
     try {
       const response = await fetch('/api/promotions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          password: 'senha123',
-          action: 'delete',
-          promotion: { id },
-        }),
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', promotion: { id } }),
       });
 
+      const resJson = await response.json().catch(() => null);
       if (response.ok) {
+        console.log('delete response:', resJson);
         alert('Promoção deletada com sucesso!');
-        loadPromotions();
+        loadPromotions(page, search);
       } else {
+        console.error('delete error response:', resJson);
         alert('Erro ao deletar promoção');
       }
     } catch (error) {
@@ -164,6 +174,24 @@ export default function AdminPage() {
       description: '',
     });
   };
+
+  useEffect(() => {
+    // Checa sessão no servidor ao montar
+    (async () => {
+      try {
+        const res = await fetch('/api/auth');
+        if (res.ok) {
+          const data = await res.json();
+            if (data.authenticated) {
+            setIsAuthenticated(true);
+            loadPromotions(1, search);
+          }
+        }
+      } catch (err) {
+        console.error('Erro checando sessão:', err);
+      }
+    })();
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -214,7 +242,15 @@ export default function AdminPage() {
             🎁 Promos
           </Link>
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={async () => {
+              try {
+                await fetch('/api/auth', { method: 'DELETE', credentials: 'same-origin' });
+              } catch (err) {
+                console.error('Erro no logout:', err);
+              }
+              setIsAuthenticated(false);
+              setPromotions([]);
+            }}
             className="text-red-600 hover:text-red-700 transition font-semibold"
           >
             Sair
@@ -300,7 +336,6 @@ export default function AdminPage() {
                   value={formData.coupon}
                   onChange={handleInputChange}
                   placeholder="Ex: PROMO15"
-                  required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -342,10 +377,38 @@ export default function AdminPage() {
 
           {/* Lista de Promoções */}
           <div className="bg-white rounded-lg shadow-md p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Promoções Ativas ({promotions.length})
-            </h2>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Promoções Ativas ({totalPromotions})
+              </h2>
+              {/* Search (admin) */}
+              <div className="mb-4 flex gap-2">
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Pesquisar por nome..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+                />
+                <button
+                  onClick={() => {
+                    setSearch(searchTerm.trim());
+                    loadPromotions(1, searchTerm.trim());
+                  }}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg"
+                >
+                  Pesquisar
+                </button>
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSearch('');
+                    loadPromotions(1, '');
+                  }}
+                  className="px-3 py-2 bg-gray-100 rounded-lg"
+                >
+                  Limpar
+                </button>
+              </div>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
               {promotions.map((promo) => (
                 <div
                   key={promo.id}
@@ -380,6 +443,34 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+            {/* Pagination (admin) */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex justify-center items-center gap-2">
+                <button
+                  onClick={() => loadPromotions(Math.max(1, page - 1), search)}
+                  disabled={page === 1}
+                  className="px-2 py-1 rounded bg-gray-200 disabled:opacity-50"
+                >
+                  ←
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => loadPromotions(p, search)}
+                    className={`px-2 py-1 rounded ${p === page ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => loadPromotions(Math.min(totalPages, page + 1), search)}
+                  disabled={page === totalPages}
+                  className="px-2 py-1 rounded bg-gray-200 disabled:opacity-50"
+                >
+                  →
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -15,14 +15,23 @@ interface Promotion {
 
 export default function Home() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const LIMIT = 10;
 
   useEffect(() => {
     const fetchPromotions = async () => {
+      setLoading(true);
       try {
-        const response = await fetch('/api/promotions');
-        const data = await response.json();
-        setPromotions(data);
+        const q = search ? `&q=${encodeURIComponent(search)}` : '';
+        const response = await fetch(`/api/promotions?page=${page}&limit=${LIMIT}${q}`);
+        const res = await response.json();
+        setPromotions(res.data || []);
+        setTotalPages(res.totalPages || 1);
       } catch (error) {
         console.error('Erro ao carregar promoções:', error);
       } finally {
@@ -31,7 +40,7 @@ export default function Home() {
     };
 
     fetchPromotions();
-  }, []);
+  }, [page, search]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -63,6 +72,34 @@ export default function Home() {
       {/* Promotions Grid */}
       <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
+          {/* Search */}
+          <div className="mb-6 flex gap-2">
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Pesquisar por nome..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+            />
+            <button
+              onClick={() => {
+                setSearch(searchTerm.trim());
+                setPage(1);
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+            >
+              Pesquisar
+            </button>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSearch('');
+                setPage(1);
+              }}
+              className="px-4 py-2 bg-gray-100 rounded-lg"
+            >
+              Limpar
+            </button>
+          </div>
           {loading ? (
             <div className="text-center py-12">
               <p className="text-gray-600 text-lg">Carregando promoções...</p>
@@ -134,6 +171,34 @@ export default function Home() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-8 flex justify-center items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1 rounded bg-gray-200 disabled:opacity-50"
+              >
+                ←
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`px-3 py-1 rounded ${p === page ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1 rounded bg-gray-200 disabled:opacity-50"
+              >
+                →
+              </button>
             </div>
           )}
         </div>
