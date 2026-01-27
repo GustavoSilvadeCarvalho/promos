@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "product_name": "iPhone 15 Pro",
+    "price": "R$ 7.999",
+    "image": "https://ae-pic-a1.aliexpress-media.com/kf/S3d6544fb6a5847d7a06f6fc2c70d6228t.jpg?has_lang=1&ver=1_220x220q75.jpg_.avif",
+    "link": "https://example.com/iphone15",
+    "coupon": "PROMO15",
+    "description": "Smartphone mais avançado da Apple"
+  },
+  {
+    "id": 2,
+    "product_name": "Headphones Sony WH-1000XM5",
+    "price": "R$ 2.499",
+    "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
+    "link": "https://example.com/sony-headphones",
+    "coupon": "SONYH50",
+    "description": "Fones com cancelamento de ruído ativo"
+  },
+  {
+    "id": 3,
+    "product_name": "Smart Watch Samsung Galaxy Watch 6",
+    "price": "R$ 1.899",
+    "image": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&h=400&fit=crop",
+    "link": "https://example.com/samsung-watch",
+    "coupon": "WATCH60",
+    "description": "Relógio inteligente com tecnologia avançada"
+  }
+]
