@@ -30,15 +30,19 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const q = (url.searchParams.get('q') || '').trim();
+    const q = (url.searchParams.get("q") || "").trim();
 
-    let query: any = supabase.from('promotions').select('*', { count: 'exact' });
+    let query: any = supabase
+      .from("promotions")
+      .select("*", { count: "exact" });
     if (q) {
       // case-insensitive partial match on product_name
-      query = query.ilike('product_name', `%${q}%`);
+      query = query.ilike("product_name", `%${q}%`);
     }
 
-    const { data, count, error } = await query.order('id', { ascending: false }).range(from, to);
+    const { data, count, error } = await query
+      .order("id", { ascending: false })
+      .range(from, to);
 
     if (error) throw error;
 

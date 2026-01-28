@@ -182,7 +182,7 @@ export default function AdminPage() {
         const res = await fetch('/api/auth');
         if (res.ok) {
           const data = await res.json();
-            if (data.authenticated) {
+          if (data.authenticated) {
             setIsAuthenticated(true);
             loadPromotions(1, search);
           }
@@ -378,37 +378,37 @@ export default function AdminPage() {
           {/* Lista de Promoções */}
           <div className="bg-white rounded-lg shadow-md p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Promoções Ativas ({totalPromotions})
-              </h2>
-              {/* Search (admin) */}
-              <div className="mb-4 flex gap-2">
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Pesquisar por nome..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-                />
-                <button
-                  onClick={() => {
-                    setSearch(searchTerm.trim());
-                    loadPromotions(1, searchTerm.trim());
-                  }}
-                  className="px-3 py-2 bg-blue-600 text-white rounded-lg"
-                >
-                  Pesquisar
-                </button>
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSearch('');
-                    loadPromotions(1, '');
-                  }}
-                  className="px-3 py-2 bg-gray-100 rounded-lg"
-                >
-                  Limpar
-                </button>
-              </div>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
+              Promoções Ativas ({totalPromotions})
+            </h2>
+            {/* Search (admin) */}
+            <div className="mb-4 flex gap-2">
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Pesquisar por nome..."
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+              />
+              <button
+                onClick={() => {
+                  setSearch(searchTerm.trim());
+                  loadPromotions(1, searchTerm.trim());
+                }}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Pesquisar
+              </button>
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setSearch('');
+                  loadPromotions(1, '');
+                }}
+                className="px-3 py-2 bg-gray-100 rounded-lg"
+              >
+                Limpar
+              </button>
+            </div>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {promotions.map((promo) => (
                 <div
                   key={promo.id}
