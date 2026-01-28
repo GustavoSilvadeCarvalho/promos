@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 interface Promotion {
@@ -11,6 +11,29 @@ interface Promotion {
   link: string;
   coupon: string;
   description: string;
+}
+
+function linkify(text: string | undefined | null): React.ReactNode {
+  if (!text) return null;
+  const parts = text.split(/(https?:\/\/[^\s]+|www\.[^\s]+)/g);
+  return parts.map((part, idx) => {
+    if (!part) return null;
+    if (/^(https?:\/\/|www\.)/.test(part)) {
+      const href = part.startsWith('http') ? part : `http://${part}`;
+      return (
+        <a
+          key={idx}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 underline"
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
 }
 
 export default function Home() {
@@ -130,7 +153,7 @@ export default function Home() {
                       <h3 className="text-2xl font-bold text-gray-900 mb-2">
                         {promo.product_name}
                       </h3>
-                      <p className="text-gray-600 mb-4">{promo.description}</p>
+                      <p className="text-gray-600 mb-4">{linkify(promo.description)}</p>
 
                       {/* Preço */}
                       <div className="mb-4">
