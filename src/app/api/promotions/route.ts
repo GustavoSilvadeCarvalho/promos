@@ -78,6 +78,10 @@ export async function POST(request: NextRequest) {
     if (action === "add") {
       // Ensure we don't send an `id` when inserting (DB generates it)
       const { id: _maybeId, ...toInsert } = promotion || {};
+      // If no created_at/date provided, add one so clients can display a date
+      if (!toInsert.created_at && !toInsert.date && !toInsert.published_at) {
+        (toInsert as any).created_at = new Date().toISOString();
+      }
       // Use admin client for writes to avoid RLS/permission issues with anon key
       const { data, error } = await supabaseAdmin
         .from("promotions")

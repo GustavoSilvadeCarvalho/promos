@@ -11,6 +11,9 @@ interface Promotion {
   link: string;
   coupon: string;
   description: string;
+  // Optional date fields may come from the API: ISO string or similar
+  date?: string;
+  created_at?: string;
 }
 
 function linkify(text: string | undefined | null): React.ReactNode {
@@ -34,6 +37,16 @@ function linkify(text: string | undefined | null): React.ReactNode {
     }
     return part;
   });
+}
+
+function formatDateString(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 export default function Home() {
@@ -153,6 +166,14 @@ export default function Home() {
                       <h3 className="text-2xl font-bold text-gray-900 mb-2">
                         {promo.product_name}
                       </h3>
+                      {/* Data (dd/mm/yyyy) — tenta vários campos possíveis */}
+                      {(() => {
+                        const ds = (promo as any).date || (promo as any).created_at || (promo as any).createdAt || (promo as any).published_at || null;
+                        const formatted = formatDateString(ds);
+                        return formatted ? (
+                          <p className="text-sm text-gray-500 mb-2">{formatted}</p>
+                        ) : null;
+                      })()}
                       <p className="text-gray-600 mb-4">{linkify(promo.description)}</p>
 
                       {/* Preço */}
