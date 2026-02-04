@@ -33,6 +33,7 @@ export default function AdminPage() {
     coupon: '',
     description: '',
   });
+  const [pasteText, setPasteText] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +84,97 @@ export default function AdminPage() {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const parsePasteText = () => {
+    const raw = (pasteText || '').trim();
+    if (!raw) return alert('Cole o texto da postagem para auto-preencher.');
+
+    // 1. Quebra em linhas e remove linhas vazias
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+    let product_name = '';
+    let price = '';
+    let link = '';
+    let coupon = '';
+    let description = '';
+
+    // Variável para juntar linhas de descrição
+    let descriptionLines = [];
+
+    // Regex auxiliares
+    const linkRegex = /(https?:\/\/\S+)/i;
+    // Detecta linha de preço mesmo com emoji antes (remove o ^ do inicio)
+    const priceLineRegex = /(?:PRE\s?ÇO|R\$)\s*[:\s]\s*(?:R\$\s*)?([\d.,]+)/i;
+    // Detecta linha de cupom
+    const couponLineRegex = /(?:CUPOM|CÓDIGO)\s*[:\s]\s*(.*)/i;
+    // Palavras que indicam que a linha NÃO é um nome de produto
+    const ignoreNameRegex = /(?:PRE\s?ÇO|R\$|CUPOM|ENVIO|NO APP|MOEDAS|LINK|HTTP|⚠️|🇧🇷|💵|🎟|🔥)/i;
+
+    lines.forEach((line) => {
+      // A. Tenta extrair LINK (prioridade máxima)
+      const linkMatch = line.match(linkRegex);
+      if (linkMatch) {
+        link = linkMatch[1];
+        return; // Se é link, não é mais nada
+      }
+
+      // B. Tenta extrair PREÇO
+      // Remove caracteres estranhos para facilitar a detecção
+      const cleanLine = line.replace(/[^\w\s$.,:]/gi, '');
+      const priceMatch = line.match(priceLineRegex);
+
+      if (priceMatch) {
+        // 1. Pega só o número limpo (ex: "180" ou "1.200,90") capturado pelo regex
+        const rawNumber = priceMatch[1] || line.replace(/[^0-9,.]/g, '');
+
+        // 2. Adiciona o R$ na frente manualmente
+        price = `R$ ${rawNumber.trim()}`;
+        return;
+      }
+
+      // C. Tenta extrair CUPOM
+      const couponMatch = line.match(couponLineRegex);
+      if (couponMatch) {
+        // Pega tudo o que vier depois de "Cupom:", incluindo as moedas
+        // O match[1] já contém o resto da linha capturado pelo regex
+        coupon = couponMatch[1].trim();
+        return;
+      }
+
+      // D. Lógica para NOME DO PRODUTO vs DESCRIÇÃO
+      // Se ainda não temos nome, e a linha não parece metadados (preço, cupom, envio), é o nome
+      if (!product_name && !line.match(ignoreNameRegex) && line.length > 3) {
+        // Remove emojis do inicio do nome para ficar limpo (ex: "🔥Microfone" vira "Microfone")
+        product_name = line.replace(/^[\p{Emoji}\u200d\uFE0F\u203C-\u3299\W]+/gu, '').trim();
+        return;
+      }
+
+      // E. O que sobrou vira DESCRIÇÃO (ex: "Envio do Brasil", instruções)
+      // Ignora linhas muito curtas ou irrelevantes
+      if (line.length > 2 && !line.includes('http')) {
+        descriptionLines.push(line);
+      }
+    });
+
+    // Fallback: Se não achou nome, tenta pegar a primeira linha válida da descrição
+    if (!product_name && descriptionLines.length > 0) {
+      product_name = descriptionLines[0].replace(/^[\p{Emoji}\W]+/gu, '').trim();
+      descriptionLines.shift(); // Remove do array de descrição
+    }
+
+    // Formata descrição
+    description = descriptionLines.join('\n');
+
+    // Atualiza o estado
+    setFormData((prev) => ({
+      ...prev,
+      product_name: product_name || prev.product_name,
+      price: price || prev.price,
+      link: link || prev.link,
+      coupon: coupon || prev.coupon,
+      description: description || prev.description,
     }));
   };
 
@@ -266,6 +358,34 @@ export default function AdminPage() {
               {editingId ? 'Editar Promoção' : 'Adicionar Nova Promoção'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-gray-700 font-semibold mb-2">
+                  Colar texto da postagem (auto-preencher)
+                </label>
+                <textarea
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  placeholder="Cole aqui o texto completo do post..."
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={parsePasteText}
+                    className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold"
+                  >
+                    Preencher automaticamente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPasteText('')}
+                    className="px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Limpar texto
+                  </button>
+                </div>
+              </div>
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">
                   Nome do Produto
