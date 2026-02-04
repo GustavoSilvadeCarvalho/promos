@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Promotion {
   id: number;
@@ -14,6 +15,8 @@ interface Promotion {
   // Optional date fields may come from the API: ISO string or similar
   date?: string;
   created_at?: string;
+  createdAt?: string;
+  published_at?: string;
 }
 
 function linkify(text: string | undefined | null): React.ReactNode {
@@ -98,7 +101,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-linear-to-r from-blue-600 to-blue-800 text-white">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Melhores Preços e Cupons</h1>
           <p className="text-lg opacity-90">Encontre os melhores códigos de desconto e promoções especiais</p>
@@ -154,10 +157,12 @@ export default function Home() {
                   <div className="grid md:grid-cols-4 gap-6 p-6 items-center">
                     {/* Imagem */}
                     <div className="md:col-span-1 flex justify-center">
-                      <img
+                      <Image
                         src={promo.image}
                         alt={promo.product_name}
-                        className="w-40 h-40 object-cover rounded-lg"
+                        width={160}
+                        height={160}
+                        className="object-cover rounded-lg"
                       />
                     </div>
 
@@ -168,8 +173,8 @@ export default function Home() {
                       </h3>
                       {/* Data (dd/mm/yyyy) — tenta vários campos possíveis */}
                       {(() => {
-                        const ds = (promo as any).date || (promo as any).created_at || (promo as any).createdAt || (promo as any).published_at || null;
-                        const formatted = formatDateString(ds);
+                        const ds = promo.date || promo.created_at || promo.createdAt || promo.published_at || null;
+                        const formatted = formatDateString(ds || null);
                         return formatted ? (
                           <p className="text-sm text-gray-500 mb-2">{formatted}</p>
                         ) : null;

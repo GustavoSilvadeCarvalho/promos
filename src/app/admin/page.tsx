@@ -101,7 +101,7 @@ export default function AdminPage() {
     let description = '';
 
     // Variável para juntar linhas de descrição
-    let descriptionLines = [];
+    const descriptionLines: string[] = [];
 
     // Regex auxiliares
     const linkRegex = /(https?:\/\/\S+)/i;
@@ -121,8 +121,7 @@ export default function AdminPage() {
       }
 
       // B. Tenta extrair PREÇO
-      // Remove caracteres estranhos para facilitar a detecção
-      const cleanLine = line.replace(/[^\w\s$.,:]/gi, '');
+      // Remove caracteres estranhos para facilitar a detecção (não utilizado diretamente)
       const priceMatch = line.match(priceLineRegex);
 
       if (priceMatch) {
@@ -276,7 +275,7 @@ export default function AdminPage() {
           const data = await res.json();
           if (data.authenticated) {
             setIsAuthenticated(true);
-            loadPromotions(1, search);
+            loadPromotions(1, '');
           }
         }
       } catch (err) {
@@ -287,7 +286,7 @@ export default function AdminPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-blue-600 to-blue-800 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
           <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
             🔐 Acesso Admin
