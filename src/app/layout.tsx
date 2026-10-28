@@ -19,7 +19,14 @@ export const metadata: Metadata = {
     default: 'Setup no Precinho',
     template: '%s | Setup no Precinho',
   },
-  description: 'Melhores preços e cupons - Setup no Precinho',
+  description: 'Melhores preços e cupons de desconto para montar seu setup gastando pouco.',
+  openGraph: {
+    title: 'Setup no Precinho',
+    description: 'Melhores preços e cupons de desconto para montar seu setup gastando pouco.',
+    locale: 'pt_BR',
+    type: 'website',
+    siteName: 'Setup no Precinho',
+  },
   icons: {
     icon: '/file.svg',
     shortcut: '/file.svg',

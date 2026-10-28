@@ -1,21 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { checkPassword, isAuthenticated } from "@/lib/auth";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const MAX_LIMIT = 50;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-// Server-side admin client (use Service Role Key if provided). This key must NEVER be exposed to the client.
-const supabaseAdmin = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey,
-);
-if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.log("Using SUPABASE_SERVICE_ROLE_KEY for server-side writes");
-} else {
-  console.warn(
-    "No SUPABASE_SERVICE_ROLE_KEY found — server will use anon key for writes (may be blocked by RLS)",
-  );
+// Apenas estes campos podem ser gravados pelo admin
+const EDITABLE_FIELDS = [
+  "product_name",
+  "price",
+  "image",
+  "link",
+  "coupon",
+  "description",
+] as const;
+
+function pickEditable(input: unknown): Record<string, string> {
+  const source = (input ?? {}) as Record<string, unknown>;
+  const result: Record<string, string> = {};
+  for (const field of EDITABLE_FIELDS) {
+    const value = source[field];
+    if (typeof value === "string") result[field] = value.trim();
+  }
+  return result;
+}
+
+function parseId(input: unknown): number | null {
+  const id = Number((input as { id?: unknown } | undefined)?.id);
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 export async function GET(request: NextRequest) {
@@ -25,18 +36,21 @@ export async function GET(request: NextRequest) {
     const limitParam = parseInt(url.searchParams.get("limit") || "10", 10);
     const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
     const limit =
-      Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 10;
+      Number.isFinite(limitParam) && limitParam > 0
+        ? Math.min(limitParam, MAX_LIMIT)
+        : 10;
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const q = (url.searchParams.get("q") || "").trim();
+    // Escapa curingas do ILIKE para que "%" e "_" sejam buscados literalmente
+    const q = (url.searchParams.get("q") || "")
+      .trim()
+      .slice(0, 100)
+      .replace(/[\\%_]/g, (c) => `\\${c}`);
 
-    let query: any = supabase
-      .from("promotions")
-      .select("*", { count: "exact" });
+    let query = supabase.from("promotions").select("*", { count: "exact" });
     if (q) {
-      // case-insensitive partial match on product_name
       query = query.ilike("product_name", `%${q}%`);
     }
 
@@ -63,36 +77,25 @@ export async function POST(request: NextRequest) {
   try {
     const { password, action, promotion } = await request.json();
 
-    // Leia a senha admin das variáveis de ambiente no servidor
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-
-    // Checa cookie de sessão `admin_auth` (setado pela rota /api/auth)
-    const cookie = request.cookies.get("admin_auth")?.value;
-    const authorized =
-      cookie === "1" || (password && password === ADMIN_PASSWORD);
-
-    if (!authorized) {
-      return NextResponse.json({ error: "Senha incorreta" }, { status: 401 });
+    // Sessão assinada (cookie setado por /api/auth) ou senha enviada no corpo
+    if (!isAuthenticated(request) && !checkPassword(password)) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     if (action === "add") {
-      // Ensure we don't send an `id` when inserting (DB generates it)
-      const { id: _maybeId, ...toInsert } = promotion || {};
-      // If no created_at/date provided, add one so clients can display a date
-      if (!toInsert.created_at && !toInsert.date && !toInsert.published_at) {
-        (toInsert as any).created_at = new Date().toISOString();
+      const toInsert = pickEditable(promotion);
+      if (!toInsert.product_name || !toInsert.link) {
+        return NextResponse.json(
+          { error: "Nome do produto e link são obrigatórios" },
+          { status: 400 },
+        );
       }
-      // Use admin client for writes to avoid RLS/permission issues with anon key
       const { data, error } = await supabaseAdmin
         .from("promotions")
-        .insert([toInsert])
+        .insert([{ ...toInsert, created_at: new Date().toISOString() }])
         .select();
-      console.log("promotions:add -> toInsert=", toInsert, "result=", {
-        data,
-        error,
-      });
       if (error) throw error;
-      if (!data || (Array.isArray(data) && data.length === 0)) {
+      if (!data || data.length === 0) {
         return NextResponse.json(
           {
             success: false,
@@ -101,30 +104,21 @@ export async function POST(request: NextRequest) {
           { status: 403 },
         );
       }
-      return NextResponse.json(
-        { success: true, data: data?.[0] || toInsert },
-        { status: 201 },
-      );
+      return NextResponse.json({ success: true, data: data[0] }, { status: 201 });
     }
 
     if (action === "update") {
-      // Don't attempt to update the identity `id` column
-      const { id, ...toUpdate } = promotion || {};
+      const id = parseId(promotion);
+      if (!id) {
+        return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+      }
       const { data, error } = await supabaseAdmin
         .from("promotions")
-        .update(toUpdate)
+        .update(pickEditable(promotion))
         .eq("id", id)
         .select();
-      console.log(
-        "promotions:update -> id=",
-        id,
-        "toUpdate=",
-        toUpdate,
-        "result=",
-        { data, error },
-      );
       if (error) throw error;
-      if (!data || (Array.isArray(data) && data.length === 0)) {
+      if (!data || data.length === 0) {
         return NextResponse.json(
           {
             success: false,
@@ -134,21 +128,21 @@ export async function POST(request: NextRequest) {
           { status: 403 },
         );
       }
-      return NextResponse.json({ success: true, data: data?.[0] || toUpdate });
+      return NextResponse.json({ success: true, data: data[0] });
     }
 
     if (action === "delete") {
+      const id = parseId(promotion);
+      if (!id) {
+        return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+      }
       const { data, error } = await supabaseAdmin
         .from("promotions")
         .delete()
-        .eq("id", promotion.id)
+        .eq("id", id)
         .select();
-      console.log("promotions:delete -> id=", promotion.id, "result=", {
-        data,
-        error,
-      });
       if (error) throw error;
-      if (!data || (Array.isArray(data) && data.length === 0)) {
+      if (!data || data.length === 0) {
         return NextResponse.json(
           {
             success: false,

@@ -1,1 +1,52 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Cor da marca */
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #dce8ff;
+  --color-brand-200: #b9d0ff;
+  --color-brand-300: #8ab0ff;
+  --color-brand-400: #5a87fb;
+  --color-brand-500: #3a63f4;
+  --color-brand-600: #2647e6;
+  --color-brand-700: #1e37c9;
+  --color-brand-800: #1e2fa1;
+  --color-brand-900: #1d2c7f;
+  --color-brand-950: #151b4b;
+
+  /* Cor de destaque (preço / cupom) */
+  --color-deal-50: #ecfdf3;
+  --color-deal-100: #d1fae1;
+  --color-deal-500: #12b76a;
+  --color-deal-600: #039855;
+  --color-deal-700: #027a48;
+}
+
+body {
+  background: var(--color-slate-50);
+  color: var(--color-slate-900);
+}
+
+::selection {
+  background: var(--color-brand-200);
+}
+
+/* Fundo quadriculado sutil do topo */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-toast-in {
+  animation: toast-in 180ms ease-out;
+}
